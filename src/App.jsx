@@ -1,9 +1,7 @@
 
 import { useState } from "react";
 import "./App.css";
-import { getQuote } from "./services/stockData";
-
-const API_KEY = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
+import { getStockData } from "./services/stockData";
 
 function App() {
   const [search, setSearch] = useState("");
@@ -11,69 +9,45 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const searchStock = async (e) => {
-    e.preventDefault();
+const searchStock = async (e) => {
+  e.preventDefault();
 
-    if (!search.trim()) return;
+  const symbol = search.trim().toUpperCase();
 
-    setLoading(true);
-    setError("");
-    setStocks([]);
+  if (!symbol) return;
 
-    try {
-      // First search for the company/ticker
-      const searchResponse = await fetch(
-        `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(
-          search
-        )}&apikey=${API_KEY}`
-      );
+  setLoading(true);
+  setError("");
+  setStocks([]);
 
-      const searchData = await searchResponse.json();
+  try {
+    const data = await getStockData(symbol);
 
-      if (searchData.Note) {
-        throw new Error(
-          "API rate limit reached. Try again in a little while."
-        );
-      }
+    const quote = data.quote;
+    const fmpQuote = data.fmpQuote?.[0];
 
-      if (!searchData.bestMatches || searchData.bestMatches.length === 0) {
-        throw new Error("No stocks found.");
-      }
-
-      // Take the best 5 matches
-      const matches = searchData.bestMatches.slice(0, 5);
-
-      // Get quote information for each match
-      const stockData = await Promise.all(
-        matches.map(async (match) => {
-          const symbol = match["1. symbol"];
-
-          const quoteResponse = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`
-          );
-
-          const quoteData = await quoteResponse.json();
-          const quote = quoteData["Global Quote"];
-
-          return {
-            symbol,
-            name: match["2. name"],
-            price: Number(quote?.["05. price"] || 0),
-            change: Number(quote?.["09. change"] || 0),
-            changePercent: quote?.["10. change percent"] || "0%",
-            volume: Number(quote?.["06. volume"] || 0),
-          };
-        })
-      );
-
-      setStocks(stockData);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Something went wrong.");
-    } finally {
-      setLoading(false);
+    if (!quote || !fmpQuote) {
+      throw new Error("No stock data found.");
     }
-  };
+
+    const stock = {
+      symbol: quote.symbol,
+      name: quote.name,
+      price: Number(quote.close || fmpQuote.price || 0),
+      change: Number(quote.change || fmpQuote.change || 0),
+      changePercent:
+        quote.percent_change || `${fmpQuote.changePercentage || 0}%`,
+      volume: Number(quote.volume || fmpQuote.volume || 0),
+    };
+
+    setStocks([stock]);
+  } catch (err) {
+    console.error(err);
+    setError(err.message || "Something went wrong.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const formatNumber = (number) => {
     return new Intl.NumberFormat("en-US").format(number);
