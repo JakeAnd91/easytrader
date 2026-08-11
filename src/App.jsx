@@ -33,16 +33,17 @@ function App() {
       }
 
       const stock = {
-        symbol: quote.symbol,
-        name: quote.name,
+       symbol: quote.symbol,
+       name: quote.name,
         price: Number(quote.close || fmpQuote.price || 0),
         change: Number(quote.change || fmpQuote.change || 0),
-        changePercent:
-          quote.percent_change ||
+       changePercent:
+         quote.percent_change ||
           String(fmpQuote.changePercentage || 0) + "%",
         volume: Number(quote.volume || fmpQuote.volume || 0),
+        fundamentals: data.fundamentals?.[0] || {},
         news: data.news,
-      };
+      };        
 
       setStocks([stock]);
     } catch (err) {

@@ -1,7 +1,7 @@
+
 const TWELVE_DATA_KEY = import.meta.env.VITE_TWELVE_DATA_KEY;
 const FMP_KEY = import.meta.env.VITE_FMP_KEY;
 const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_KEY;
-
 
 export async function getQuote(symbol) {
   const response = await fetch(
@@ -9,10 +9,8 @@ export async function getQuote(symbol) {
   );
 
   const data = await response.json();
-
   return data;
 }
-
 
 export async function getFMPQuote(symbol) {
   const response = await fetch(
@@ -20,10 +18,17 @@ export async function getFMPQuote(symbol) {
   );
 
   const data = await response.json();
-
   return data;
 }
 
+export async function getFundamentals(symbol) {
+  const response = await fetch(
+    `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_KEY}`
+  );
+
+  const data = await response.json();
+  return data;
+}
 
 export async function getNews(symbol) {
   const response = await fetch(
@@ -31,22 +36,21 @@ export async function getNews(symbol) {
   );
 
   const data = await response.json();
-
   return data;
 }
 
-
 export async function getStockData(symbol) {
-  const [quote, fmpQuote, news] = await Promise.all([
+  const [quote, fmpQuote, fundamentals, news] = await Promise.all([
     getQuote(symbol),
     getFMPQuote(symbol),
+    getFundamentals(symbol),
     getNews(symbol),
   ]);
 
   return {
     quote,
     fmpQuote,
+    fundamentals,
     news,
   };
 }
-
