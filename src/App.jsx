@@ -8,46 +8,50 @@ function App() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedStock, setSelectedStock] = useState(null);
 
-const searchStock = async (e) => {
-  e.preventDefault();
+  const searchStock = async (e) => {
+    e.preventDefault();
 
-  const symbol = search.trim().toUpperCase();
+    const symbol = search.trim().toUpperCase();
 
-  if (!symbol) return;
+    if (!symbol) return;
 
-  setLoading(true);
-  setError("");
-  setStocks([]);
+    setLoading(true);
+    setError("");
+    setStocks([]);
+    setSelectedStock(null);
 
-  try {
-    const data = await getStockData(symbol);
+    try {
+      const data = await getStockData(symbol);
 
-    const quote = data.quote;
-    const fmpQuote = data.fmpQuote?.[0];
+      const quote = data.quote;
+      const fmpQuote = data.fmpQuote?.[0];
 
-    if (!quote || !fmpQuote) {
-      throw new Error("No stock data found.");
+      if (!quote || !fmpQuote) {
+        throw new Error("No stock data found.");
+      }
+
+      const stock = {
+        symbol: quote.symbol,
+        name: quote.name,
+        price: Number(quote.close || fmpQuote.price || 0),
+        change: Number(quote.change || fmpQuote.change || 0),
+        changePercent:
+          quote.percent_change ||
+          String(fmpQuote.changePercentage || 0) + "%",
+        volume: Number(quote.volume || fmpQuote.volume || 0),
+        news: data.news,
+      };
+
+      setStocks([stock]);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
     }
-
-    const stock = {
-      symbol: quote.symbol,
-      name: quote.name,
-      price: Number(quote.close || fmpQuote.price || 0),
-      change: Number(quote.change || fmpQuote.change || 0),
-      changePercent:
-        quote.percent_change || `${fmpQuote.changePercentage || 0}%`,
-      volume: Number(quote.volume || fmpQuote.volume || 0),
-    };
-
-    setStocks([stock]);
-  } catch (err) {
-    console.error(err);
-    setError(err.message || "Something went wrong.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const formatNumber = (number) => {
     return new Intl.NumberFormat("en-US").format(number);
@@ -92,10 +96,34 @@ const searchStock = async (e) => {
 
           <div className="popular">
             <span>Popular:</span>
-            <button onClick={() => setSearch("AAPL")}>AAPL</button>
-            <button onClick={() => setSearch("NVDA")}>NVDA</button>
-            <button onClick={() => setSearch("TSLA")}>TSLA</button>
-            <button onClick={() => setSearch("MSFT")}>MSFT</button>
+
+            <button
+              type="button"
+              onClick={() => setSearch("AAPL")}
+            >
+              AAPL
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSearch("NVDA")}
+            >
+              NVDA
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSearch("TSLA")}
+            >
+              TSLA
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSearch("MSFT")}
+            >
+              MSFT
+            </button>
           </div>
         </section>
 
@@ -118,7 +146,10 @@ const searchStock = async (e) => {
                 const positive = stock.change >= 0;
 
                 return (
-                  <div className="stock-card" key={stock.symbol}>
+                  <div
+                    className="stock-card"
+                    key={stock.symbol}
+                  >
                     <div className="card-top">
                       <div className="ticker">
                         <div className="ticker-icon">
@@ -153,7 +184,9 @@ const searchStock = async (e) => {
                     <div className="details">
                       <div>
                         <span>Volume</span>
-                        <strong>{formatNumber(stock.volume)}</strong>
+                        <strong>
+                          {formatNumber(stock.volume)}
+                        </strong>
                       </div>
 
                       <div>
@@ -162,7 +195,11 @@ const searchStock = async (e) => {
                       </div>
                     </div>
 
-                    <button className="view-button">
+                    <button
+                      type="button"
+                      className="view-button"
+                      onClick={() => setSelectedStock(stock)}
+                    >
                       View Details →
                     </button>
                   </div>
@@ -172,10 +209,99 @@ const searchStock = async (e) => {
           </section>
         )}
 
+        {selectedStock && (
+          <section className="stock-details">
+            <div className="details-header">
+              <div>
+                <span className="details-symbol">
+                  {selectedStock.symbol}
+                </span>
+
+                <h2>{selectedStock.name}</h2>
+              </div>
+
+              <button
+                type="button"
+                className="back-button"
+                onClick={() => setSelectedStock(null)}
+              >
+                ← Back
+              </button>
+            </div>
+
+            <div className="details-grid">
+              <div className="detail-card">
+                <span>Price</span>
+                <strong>
+                  ${selectedStock.price.toFixed(2)}
+                </strong>
+              </div>
+
+              <div className="detail-card">
+                <span>Change</span>
+
+                <strong>
+                  {selectedStock.change >= 0 ? "▲" : "▼"}{" "}
+                  {Math.abs(selectedStock.change).toFixed(2)} (
+                  {selectedStock.changePercent})
+                </strong>
+              </div>
+
+              <div className="detail-card">
+                <span>Volume</span>
+
+                <strong>
+                  {formatNumber(selectedStock.volume)}
+                </strong>
+              </div>
+            </div>
+
+            <div className="news-section">
+              <h2>Latest News</h2>
+
+              {selectedStock.news &&
+              selectedStock.news.length > 0 ? (
+                <div className="news-list">
+                  {selectedStock.news
+                    .slice(0, 5)
+                    .map((article, index) => (
+                      <article
+                        className="news-card"
+                        key={article.id || index}
+                      >
+                        <h3>{article.headline}</h3>
+
+                        <p>{article.summary}</p>
+
+                        <div className="news-meta">
+                          <span>{article.source}</span>
+
+                          {article.url && (
+                            <a
+                              href={article.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Read article →
+                            </a>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                </div>
+              ) : (
+                <p>No recent news available.</p>
+              )}
+            </div>
+          </section>
+        )}
+
         {!loading && stocks.length === 0 && !error && (
           <div className="empty-state">
             <div className="empty-icon">⌁</div>
+
             <h3>Search for a stock</h3>
+
             <p>
               Enter a company name or ticker symbol above to get started.
             </p>
@@ -184,7 +310,10 @@ const searchStock = async (e) => {
 
         <footer>
           <span>StockFinder</span>
-          <span>Market data powered by Alpha Vantage</span>
+
+          <span>
+            Market data powered by Twelve Data, FMP & Finnhub
+          </span>
         </footer>
       </main>
     </div>
@@ -192,4 +321,3 @@ const searchStock = async (e) => {
 }
 
 export default App;
-
